@@ -1,11 +1,13 @@
 import uuid
 import random
+from datetime import date, timedelta
 
 # Configuration
 NUM_STUDENTS = 100
 SUBJECTS = ["Mathematics", "Physics", "Chemistry", "Computer Science", "English"]
 STATUSES = ["Present", "Absent", "Present", "Present", "Present"] 
-START_DATE = "2024-01-01"
+START_DATE = date(2024, 1, 1)
+END_DATE = date(2024, 12, 31)
 
 FIRST_NAMES = [
     "Aarav", "Vihaan", "Vivaan", "Ananya", "Diya", "Advik", "Kabir", "Rohan", "Siddharth", "Kiara",
@@ -21,14 +23,19 @@ AREAS = ["MG Road", "Indiranagar", "Koramangala", "Bandra", "Connaught Place", "
 
 def generate_sql():
     with open("mock_data.sql", "w") as f:
-        f.write("-- Mock Data for Student Management System (Indian Context)\n")
+        f.write("-- Mock Data for Student Management System (Full Year detailed)\n")
         f.write("USE student_management;\n\n")
+        f.write("SET autocommit=0;\n") # Faster inserts
         
         student_ids = []
         
         # 1. Generate Students
+        print("Generating Students...")
         f.write("-- Insert Students\n")
         seen_emails = set()
+        
+        # Buffer for bulk insert
+        student_values = []
         
         for i in range(NUM_STUDENTS):
             s_id = str(uuid.uuid4())
@@ -38,38 +45,73 @@ def generate_sql():
             lname = random.choice(LAST_NAMES)
             name = f"{fname} {lname}"
             
-            # Ensure unique email
             email = f"{fname.lower()}.{lname.lower()}{random.randint(1, 999)}@college.com"
             while email in seen_emails:
                  email = f"{fname.lower()}.{lname.lower()}{random.randint(1, 9999)}@college.com"
             seen_emails.add(email)
             
-            # Indian Phone Number (Start with 6-9, 10 digits)
             phone = f"{random.randint(6,9)}{random.randint(100000000, 999999999)}"
-            
             city = random.choice(CITIES)
             area = random.choice(AREAS)
             pincode = random.randint(110000, 800000)
             address = f"Flat {random.randint(1, 500)}, {area}, {city} - {pincode}"
             
-            f.write(f"INSERT INTO students (id, name, email, phone, address) VALUES ('{s_id}', '{name}', '{email}', '{phone}', '{address}');\n")
+            student_values.append(f"('{s_id}', '{name}', '{email}', '{phone}', '{address}')")
+            
+        f.write("INSERT INTO students (id, name, email, phone, address) VALUES \n")
+        f.write(",\n".join(student_values) + ";\n")
         
+        
+        # 2. Generate Attendance (Every day of the year)
+        print("Generating Attendance (this may take a moment)...")
         f.write("\n-- Insert Attendance\n")
-        # 2. Generate Attendance
-        for s_id in student_ids:
-            for day in range(1, 6):
-                date = f"2024-01-{day:02d}"
+        
+        delta = END_DATE - START_DATE
+        attendance_values = []
+        BATCH_SIZE = 5000 # Commit every 5000 records to keep file manageable? No, just bulk insert chunks.
+        
+        total_records = 0
+        
+        for i in range(delta.days + 1):
+            current_date = START_DATE + timedelta(days=i)
+            day_str = current_date.isoformat()
+            
+            # Skip Sundays? (Optional, but let's keep it 'every day' as requested or maybe skip if weekday=6)
+            # if current_date.weekday() == 6: continue 
+
+            for s_id in student_ids:
                 status = random.choice(STATUSES)
-                f.write(f"INSERT INTO attendance (student_id, date, status) VALUES ('{s_id}', '{date}', '{status}');\n")
+                attendance_values.append(f"('{s_id}', '{day_str}', '{status}')")
+                
+                if len(attendance_values) >= 1000:
+                    f.write("INSERT INTO attendance (student_id, date, status) VALUES \n")
+                    f.write(",\n".join(attendance_values) + ";\n")
+                    attendance_values = []
+                    total_records += 1000
+        
+        # Remaining attendance
+        if attendance_values:
+            f.write("INSERT INTO attendance (student_id, date, status) VALUES \n")
+            f.write(",\n".join(attendance_values) + ";\n")
+
+        print(f"  -> Generated approx {total_records} attendance records.")
 
         f.write("\n-- Insert Marks\n")
         # 3. Generate Marks
+        print("Generating Marks...")
+        marks_values = []
         for s_id in student_ids:
             for subject in SUBJECTS:
                 marks = round(random.uniform(35, 100), 2)
-                f.write(f"INSERT INTO marks (student_id, subject, marks_obtained) VALUES ('{s_id}', '{subject}', {marks});\n")
+                marks_values.append(f"('{s_id}', '{subject}', {marks})")
+        
+        f.write("INSERT INTO marks (student_id, subject, marks_obtained) VALUES \n")
+        f.write(",\n".join(marks_values) + ";\n")
+        
+        f.write("COMMIT;\n")
+        f.write("SET autocommit=1;\n")
 
-    print(f"Generated mock_data.sql with {NUM_STUDENTS} students (Indian names).")
+    print(f"Done! Generated mock_data.sql with {NUM_STUDENTS} students and full-year attendance.")
 
 if __name__ == "__main__":
     generate_sql()
