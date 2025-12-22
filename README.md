@@ -38,10 +38,22 @@ Run the following command from the project root:
 javac -d bin -cp lib/mysql-connector-j-version.jar src/main/java/com/college/sms/**/*.java src/main/java/com/college/sms/Main.java
 ```
 
+For Windows run this command:
+
+```sh
+javac -d bin -cp lib/mysql-connector-j-9.5.0.jar @(Get-ChildItem -Recurse -Filter *.java | ForEach-Object { $_.FullName })
+```
+
 ## How to Run
 
 after compiling, run:
 
 ```sh
 java -cp bin:lib/mysql-connector-j-version.jar com.college.sms.Main
+```
+
+For Windows run this command:
+
+```sh
+java -cp "bin;lib/mysql-connector-j-9.5.0.jar" com.college.sms.Main
 ```
