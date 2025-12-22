@@ -1,0 +1,5 @@
+bin/*
+mock_data.sql
+lib/*
+copilot_guide.md
+guide.md
