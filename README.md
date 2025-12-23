@@ -57,3 +57,10 @@ For Windows run this command:
 ```sh
 java -cp "bin;lib/mysql-connector-j-9.5.0.jar" com.college.sms.Main
 ```
+
+
+For confirming if the Admin is registered or not run this command:
+
+```sh
+mysql -u root -p -e "SELECT * FROM users;"
+```
